@@ -48,15 +48,13 @@ def get_transform(train):
     return SegmentationPresetTrain(base_size, crop_size) if train else SegmentationPresetEval(base_size)
 
 
-def create_model(aux, num_classes, pretrain=True): #aux: 是否使用辅助分类器
+def create_model(aux, num_classes, pretrain=True): 
     model = fcn_resnet50(aux=aux, num_classes=num_classes)
 
     if pretrain:
         weights_dict = torch.load("./fcn_resnet50_coco.pth", map_location='cpu')
 
         if num_classes != 21:
-            # 官方提供的预训练权重是21类(包括背景)
-            # 如果训练自己的数据集，将和类别相关的权重删除，防止权重shape不一致报错
             for k in list(weights_dict.keys()):
                 if "classifier.4" in k:
                     del weights_dict[k]
@@ -75,7 +73,6 @@ def main(args):
     # segmentation nun_classes + background
     num_classes = args.num_classes + 1
 
-    # 用来保存训练以及验证过程中信息
     results_file = "results{}.txt".format(datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
 
     # VOCdevkit -> VOC2012 -> ImageSets -> Segmentation -> train.txt
@@ -123,7 +120,6 @@ def main(args):
 
     scaler = torch.cuda.amp.GradScaler() if args.amp else None
 
-    # 创建学习率更新策略，这里是每个step更新一次(不是每个epoch)
     lr_scheduler = create_lr_scheduler(optimizer, len(train_loader), args.epochs, warmup=True)
 
     if args.resume:
@@ -145,7 +141,6 @@ def main(args):
         print(val_info)
         # write into txt
         with open(results_file, "a") as f:
-            # 记录每个epoch对应的train_loss、lr以及验证集各指标
             train_info = f"[epoch: {epoch}]\n" \
                          f"train_loss: {mean_loss:.4f}\n" \
                          f"lr: {lr:.6f}\n"
